@@ -8,34 +8,34 @@ backup sizes, including per-snapshot and per-namespace breakdowns.
 
 Usage Examples:
   - Calculate backup sizes for all VMs and CTs in a specific datastore (does not include namespaces):
-      ./pbs_sizes.py /mnt/datastores/central
+      ./pbsestimator.py /mnt/datastores/central
 
   - Show a summary of total space used per VM/CT (no per-snapshot details):
-      ./pbs_sizes.py -s /mnt/datastores/central
+      ./pbsestimator.py -s /mnt/datastores/central
 
   - Output results in JSON format for automation or further processing:
-      ./pbs_sizes.py -j /mnt/datastores/central
+      ./pbsestimator.py -j /mnt/datastores/central
 
   - Calculate backup sizes for a specific namespace:
-      ./pbs_sizes.py -n mynamespace /mnt/datastores/central
+      ./pbsestimator.py -n mynamespace /mnt/datastores/central
 
   - Calculate backup sizes for all namespaces within a datastore:
-      ./pbs_sizes.py --all-namespaces /mnt/datastores/central
+      ./pbsestimator.py --all-namespaces /mnt/datastores/central
 
   - Enable verbose mode for detailed processing logs:
-      ./pbs_sizes.py -v /mnt/datastores/central
+      ./pbsestimator.py -v /mnt/datastores/central
 
   - Filter backups by specific VM/CT IDs (single ID, range, or comma-separated list):
-      ./pbs_sizes.py -i 100,101-105 /mnt/datastores/central
+      ./pbsestimator.py -i 100,101-105 /mnt/datastores/central
 
   - Include snapshots with no new chunks in the calculation:
-      ./pbs_sizes.py -a /mnt/datastores/central
+      ./pbsestimator.py -a /mnt/datastores/central
 
   - Sort output by highest space usage (blame mode):
-      ./pbs_sizes.py -b /mnt/datastores/central
+      ./pbsestimator.py -b /mnt/datastores/central
 
   - Save results to a file:
-      ./pbs_sizes.py -o output.txt /mnt/datastores/central
+      ./pbsestimator.py -o output.txt /mnt/datastores/central
 
 Options:
   -i,  --id            Filter by VM/LXC IDs (single ID, range, or comma-separated values).
