@@ -6,7 +6,7 @@ This Python script calculates the estimated storage usage of VMs (Virtual Machin
 
 - **Chunk-Based Estimation**: Estimates storage usage by counting unique chunks referenced by backups, assuming a fixed chunk size of 4 MiB.
 - **Per-Snapshot Breakdown**: View the size of each snapshot for a VM or container.
-- **Per-Namespace Breakdown**: Calculate backup sizes for specific namespaces or all namespaces within a datastore.
+- **Per-Namespace Breakdown**: Calculate backup sizes for specific namespaces or all namespaces within a datastore. NOW ALSO SUPPORTS multiple layers of namespaces.
 - **Filter by VM/CT IDs**: Filter results by specific VM or container IDs.
 - **JSON Output**: Output results in JSON format for automation or further processing.
 - **Summary Mode**: Display only the total referenced sizes for each VM/CT without per-snapshot details.
@@ -113,10 +113,16 @@ To calculate backup sizes for a specific namespace:
 ```bash
 ./pbsestimator.py -n mynamespace /mnt/datastores/central
 ```
+**NOW ALSO SUPPORTS multiple layers of namespaces.**
+
+```bash
+./pbsestimator.py -n mynamespace/anothernamespace /mnt/datastores/central
+```
 
 ### Scan All Namespaces
 
 To calculate backup sizes for all namespaces within a datastore:
+NOW ALSO SUPPORTS multiple layers of namespaces.
 
 ```bash
 ./pbsestimator.py --all-namespaces /mnt/datastores/central

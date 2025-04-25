@@ -7,46 +7,46 @@ stored in a Proxmox Backup Server datastore. It provides detailed insights into
 backup sizes, including per-snapshot and per-namespace breakdowns.
 
 Usage Examples:
-  - Calculate backup sizes for all VMs and CTs in a specific datastore (does not include namespaces):
-      ./pbsestimator.py /mnt/datastores/central
+  - Calculate backup sizes for all VMs and CTs in a specific datastore:
+      ./pbs_sizes.py /mnt/datastores/central
 
   - Show a summary of total space used per VM/CT (no per-snapshot details):
-      ./pbsestimator.py -s /mnt/datastores/central
+      ./pbs_sizes.py -s /mnt/datastores/central
 
   - Output results in JSON format for automation or further processing:
-      ./pbsestimator.py -j /mnt/datastores/central
+      ./pbs_sizes.py -j /mnt/datastores/central
 
   - Calculate backup sizes for a specific namespace:
-      ./pbsestimator.py -n mynamespace /mnt/datastores/central
+      ./pbs_sizes.py -n mynamespace /mnt/datastores/central
 
   - Calculate backup sizes for all namespaces within a datastore:
-      ./pbsestimator.py --all-namespaces /mnt/datastores/central
+      ./pbs_sizes.py --all-namespaces /mnt/datastores/central
 
   - Enable verbose mode for detailed processing logs:
-      ./pbsestimator.py -v /mnt/datastores/central
+      ./pbs_sizes.py -v /mnt/datastores/central
 
   - Filter backups by specific VM/CT IDs (single ID, range, or comma-separated list):
-      ./pbsestimator.py -i 100,101-105 /mnt/datastores/central
+      ./pbs_sizes.py -i 100,101-105 /mnt/datastores/central
 
   - Include snapshots with no new chunks in the calculation:
-      ./pbsestimator.py -a /mnt/datastores/central
+      ./pbs_sizes.py -a /mnt/datastores/central
 
   - Sort output by highest space usage (blame mode):
-      ./pbsestimator.py -b /mnt/datastores/central
+      ./pbs_sizes.py -b /mnt/datastores/central
 
   - Save results to a file:
-      ./pbsestimator.py -o output.txt /mnt/datastores/central
+      ./pbs_sizes.py -o output.txt /mnt/datastores/central
 
 Options:
-  -i,  --id            Filter by VM/LXC IDs (single ID, range, or comma-separated values).
-  -v,  --verbose       Enable verbose output for detailed processing logs.
-  -j,  --json          Output results in JSON format for automation or further processing.
-  -a,  --all           Include snapshots with no new chunks in the calculation.
-  -s,  --sum           Show only the total referenced sizes for each VM/CT (no per-snapshot details).
-  -b,  --blame         Sort output by highest space usage (blame mode).
-  -n,  --namespace     Specify a namespace to scan (default: root namespace).
-  -an, --all-namespaces    Scan all namespaces within the datastore.
-  -o,  --output        Save results to a file.
+  -i, --id            Filter by VM/LXC IDs (single ID, range, or comma-separated values).
+  -v, --verbose       Enable verbose output for detailed processing logs.
+  -j, --json          Output results in JSON format for automation or further processing.
+  -a, --all           Include snapshots with no new chunks in the calculation.
+  -s, --sum           Show only the total referenced sizes for each VM/CT (no per-snapshot details).
+  -b, --blame         Sort output by highest space usage (blame mode).
+  -n, --namespace     Specify a namespace to scan (default: root namespace).
+  --all-namespaces    Scan all namespaces within the datastore.
+  -o, --output        Save results to a file.
   datastore           Path to the Proxmox Backup Server datastore (e.g., /mnt/datastores/central).
 """
 
@@ -92,7 +92,7 @@ def argparser():
              "Example: -n mynamespace"
     )
     parser.add_argument(
-        "-an", "--all-namespaces", action="store_true",
+        "--all-namespaces", action="store_true",
         help="Scan all namespaces within the datastore."
     )
     parser.add_argument(
@@ -110,8 +110,10 @@ def argparser():
 def get_datastore_path(datastore, namespace=None):
     path = os.path.join("/mnt/datastore", datastore) if not os.path.isabs(datastore) else datastore
     if namespace:
-        path = os.path.join(path, "ns", namespace)
+        for part in namespace.strip("/").split("/"):
+            path = os.path.join(path, "ns", part)
     return path
+
 
 def check_existing_ids(datastore_path):
     vm_ct_list = []
@@ -167,12 +169,22 @@ def count_blocks(vm_list):
         })
     return snapshots, total_namespace_bytes
 
-def list_namespaces(datastore_path):
+def list_namespaces(base_path):
     namespaces = []
-    ns_path = os.path.join(datastore_path, "ns")
-    if os.path.isdir(ns_path):
-        namespaces = [name for name in os.listdir(ns_path) if os.path.isdir(os.path.join(ns_path, name))]
+
+    def recurse(path, prefix=""):
+        ns_path = os.path.join(path, "ns")
+        if os.path.isdir(ns_path):
+            for name in os.listdir(ns_path):
+                full_ns_path = os.path.join(ns_path, name)
+                if os.path.isdir(full_ns_path):
+                    full_name = os.path.join(prefix, name) if prefix else name
+                    namespaces.append(full_name)
+                    recurse(full_ns_path, full_name)
+
+    recurse(base_path)
     return namespaces
+
 
 def write_output(output_file, content):
     with open(output_file, "w") as f:
@@ -184,33 +196,29 @@ if __name__ == "__main__":
 
     if args["all_namespaces"]:
         namespaces = list_namespaces(datastore_path)
+        if not namespaces:
+            print("No namespaces found.")
         output_content = ""
+
         for namespace in namespaces:
             namespace_path = get_datastore_path(args["datastore"], namespace)
             existing_ids = check_existing_ids(namespace_path)
+            if not existing_ids:
+                continue
             vm_ct_paths = get_absolute_paths(existing_ids, namespace_path)
             results, total_namespace_bytes = count_blocks(vm_ct_paths)
             namespace_output = f"Namespace {namespace}: {total_namespace_bytes / (1024**3):.2f} GiB\n"
             output_content += namespace_output
             print(namespace_output)
+
         if args["output"]:
             write_output(args["output"], output_content)
+
     else:
         existing_ids = check_existing_ids(datastore_path)
         vm_ct_paths = get_absolute_paths(existing_ids, datastore_path)
         results, total_namespace_bytes = count_blocks(vm_ct_paths)
-
-        # Blame mode: Sort by highest space usage
-        if args["blame"]:
-            results.sort(key=lambda x: x["total_bytes"], reverse=True)
-
-        # JSON output
-        if args["json"]:
-            print(json.dumps(results, indent=4))
-            if args["output"]:
-                write_output(args["output"], json.dumps(results, indent=4))
-            sys.exit(0)
-
+        
         output_content = ""
         if args["sum"]:
             for item in results:
@@ -234,6 +242,6 @@ if __name__ == "__main__":
             total_output = f"Total Namespace Size: {total_namespace_bytes / (1024**3):.2f} GiB\n"
             output_content += total_output
             print(total_output)
-
+        
         if args["output"]:
             write_output(args["output"], output_content)
